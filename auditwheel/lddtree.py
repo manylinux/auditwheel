@@ -257,7 +257,7 @@ def find_lib(elf: ELFFile, lib: str, ldpaths: List[str],
         path = os.path.join(ldpath, lib)
         target = readlink(path, root, prefixed=True)
 
-        if os.path.exists(target):
+        if os.path.exists(target) and os.path.isfile(target):
             with open(target, 'rb') as f:
                 libelf = ELFFile(f)
                 if compatible_elfs(elf, libelf):
