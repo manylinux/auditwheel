@@ -422,11 +422,11 @@ class Anylinux:
 
         # Repair the wheel using the manylinux container
         repair_command = f"auditwheel repair --plat {policy} -w /io /io/{orig_wheel}"
-        output = docker_exec(manylinux_ctr, repair_command, expected_retcode=1)
+        output = docker_exec(manylinux_ctr, repair_command, expected_retcode=0)
         assert "This does not look like a platform wheel" in output
 
         output = docker_exec(
-            manylinux_ctr, f"auditwheel show /io/{orig_wheel}", expected_retcode=1
+            manylinux_ctr, f"auditwheel show /io/{orig_wheel}", expected_retcode=0
         )
         assert "This does not look like a platform wheel" in output
 

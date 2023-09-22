@@ -34,7 +34,7 @@ def execute(args, p):
         wheel_abi = analyze_wheel_abi(args.WHEEL_FILE)
     except NonPlatformWheel:
         logger.info(NonPlatformWheel.LOG_MESSAGE)
-        return 1
+        return 0
 
     _, _, _, in_tags = parse_wheel_filename(basename(args.WHEEL_FILE))
     in_fname_tags = {tag.platform for tag in in_tags}

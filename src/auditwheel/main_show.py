@@ -41,7 +41,7 @@ def execute(args, p):
         winfo = analyze_wheel_abi(args.WHEEL_FILE)
     except NonPlatformWheel:
         logger.info(NonPlatformWheel.LOG_MESSAGE)
-        return 1
+        return 0
 
     libs_with_versions = [
         f"{k} with versions {v}" for k, v in winfo.versioned_symbols.items()

@@ -16,6 +16,6 @@ def test_non_platform_wheel_repair(mode):
         stderr=subprocess.PIPE,
         text=True,
     )
-    assert proc.returncode == 1
+    assert proc.returncode == 0
     assert "This does not look like a platform wheel" in proc.stderr
     assert "AttributeError" not in proc.stderr
