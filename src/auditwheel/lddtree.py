@@ -386,6 +386,7 @@ def lddtree(
         libs: list[str] = []
         rpaths: list[str] = []
         runpaths: list[str] = []
+        _excluded_libs: set[str] = set()
         for segment in elf.iter_segments():
             if segment.header.p_type != "PT_DYNAMIC":
                 continue
@@ -396,8 +397,11 @@ def lddtree(
                 elif t.entry.d_tag == "DT_RUNPATH":
                     runpaths = parse_ld_paths(t.runpath, path=path, root=root)
                 elif t.entry.d_tag == "DT_NEEDED":
-                    if any(fnmatch(t.needed, e) for e in exclude):
+                    if t.needed in _excluded_libs or any(
+                        fnmatch(t.needed, e) for e in exclude
+                    ):
                         log.info("Excluding %s", t.needed)
+                        _excluded_libs.add(t.needed)
                     else:
                         libs.append(t.needed)
             if runpaths:
@@ -416,7 +420,6 @@ def lddtree(
             log.debug("  ldpaths[runpath] = %s", runpaths)
         ret["rpath"] = rpaths
         ret["runpath"] = runpaths
-        ret["needed"] = libs
 
         # Search for the libs this ELF uses.
         all_ldpaths: list[str] | None = None
@@ -434,6 +437,12 @@ def lddtree(
                     + ldpaths["interp"]
                 )
             realpath, fullpath = find_lib(elf, lib, all_ldpaths, root)
+            if lib in _excluded_libs or (
+                realpath is not None and any(fnmatch(realpath, e) for e in exclude)
+            ):
+                log.info("Excluding %s", realpath)
+                _excluded_libs.add(lib)
+                continue
             _all_libs[lib] = {
                 "realpath": realpath,
                 "path": fullpath,
@@ -452,5 +461,7 @@ def lddtree(
                 _all_libs[lib]["needed"] = lret["needed"]
 
         del elf
+
+        ret["needed"] = [lib for lib in libs if lib not in _excluded_libs]
 
     return ret

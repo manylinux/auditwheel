@@ -1,18 +1,21 @@
 from __future__ import annotations
 
+import importlib
+import os
 import platform
 import subprocess
 import sys
 import zipfile
 from argparse import Namespace
 from datetime import datetime, timezone
+from os.path import isabs
 from pathlib import Path
 from unittest import mock
 from unittest.mock import Mock
 
 import pytest
 
-from auditwheel import main_repair
+from auditwheel import lddtree, main_repair
 from auditwheel.libc import Libc
 from auditwheel.policy import WheelPolicies
 from auditwheel.wheel_abi import analyze_wheel_abi
@@ -40,6 +43,11 @@ HERE = Path(__file__).parent.resolve()
             {"libffi.so.5"},
             frozenset(["libffi.so.[6,7]"]),
         ),
+        (
+            "cffi-1.5.0-cp27-none-linux_x86_64.whl",
+            set(),
+            frozenset([f"{HERE}/*"]),
+        ),
         ("cffi-1.5.0-cp27-none-linux_x86_64.whl", set(), frozenset(["libffi.so.*"])),
         ("cffi-1.5.0-cp27-none-linux_x86_64.whl", set(), frozenset(["*"])),
         (
@@ -50,9 +58,23 @@ HERE = Path(__file__).parent.resolve()
     ],
 )
 def test_analyze_wheel_abi(file, external_libs, exclude):
-    wheel_policies = WheelPolicies(libc=Libc.GLIBC, arch="x86_64")
-    winfo = analyze_wheel_abi(wheel_policies, str(HERE / file), exclude)
-    assert set(winfo.external_refs["manylinux_2_5_x86_64"]["libs"]) == external_libs
+    # If exclude libs contain path, LD_LIBRARY_PATH need to be modified to find the libs
+    # `lddtree.load_ld_paths` needs to be reloaded for it's `lru_cache`-ed.
+    modify_ld_library_path = any(isabs(e) for e in exclude)
+
+    with pytest.MonkeyPatch.context() as cp:
+        if modify_ld_library_path:
+            cp.setenv("LD_LIBRARY_PATH", f"{HERE}")
+            importlib.reload(lddtree)
+
+        wheel_policies = WheelPolicies(libc=Libc.GLIBC, arch="x86_64")
+        winfo = analyze_wheel_abi(wheel_policies, str(HERE / file), exclude)
+        assert (
+            set(winfo.external_refs["manylinux_2_5_x86_64"]["libs"]) == external_libs
+        ), f"{HERE}, {exclude}, {os.environ}"
+
+    if modify_ld_library_path:
+        importlib.reload(lddtree)
 
 
 def test_analyze_wheel_abi_pyfpe():
