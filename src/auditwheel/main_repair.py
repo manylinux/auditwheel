@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 from os.path import abspath, basename, exists, isfile
 
 from auditwheel.patcher import Patchelf
@@ -101,6 +102,12 @@ wheel will abort processing of subsequent wheels.
         help="Do not check for higher policy compatibility",
         default=False,
     )
+    p.add_argument(
+        "--extra-lib-name-tag",
+        dest="EXTRA_LIB_NAME_TAG",
+        help="Extra, optional tag for copied library names",
+        default=os.environ.get("AUDITWHEEL_EXTRA_LIB_NAME_TAG", None),
+    )
     p.set_defaults(func=execute)
 
 
@@ -183,6 +190,7 @@ def execute(args, parser: argparse.ArgumentParser):
             patcher=patcher,
             exclude=exclude,
             strip=args.STRIP,
+            extra_lib_name_tag=args.EXTRA_LIB_NAME_TAG,
         )
 
         if out_wheel is not None:
